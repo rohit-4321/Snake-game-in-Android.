@@ -28,6 +28,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
     private Bitmap backgroundImage;
 
     private Thread thread;
+    private Boolean isThreadRunning = false;
 
     private Apple apple;
     private Snake snake;
@@ -55,8 +56,9 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
     }
     @Override
     public void run() {
-        while(true)
+        while(isThreadRunning)
         {
+            Log.i("TAG","thread is runnig.");
             if(updateRequired())
             {
                 if(!paused)
@@ -68,6 +70,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
 
             }
         }
+
 
     }
 
@@ -144,12 +147,14 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
 
     void onResume()
     {
+        isThreadRunning = true;
         thread = new Thread(this);
         thread.start();
 
     }
     void onPaused()
     {
+        isThreadRunning = false;
         try {
             thread.join();
         } catch (InterruptedException e) {
