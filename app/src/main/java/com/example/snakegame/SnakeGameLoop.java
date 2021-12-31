@@ -8,6 +8,7 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
 import android.util.Log;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -36,13 +37,21 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
 
     private Boolean paused  = true;
     private long nextFrameTime;
+
+    //For Swipe detection.
+    private float x1 , x2 ,y1,y2;
+    private float abs_x,abs_y;
+    static final int MIN_DISTANCE = 100;
+
+    private  GestureDetector gestureDetector;
+
     SnakeGameLoop(Context context , Point screenSize)
     {
         super(context);
         blockSize = screenSize.x / NUM_BLOCK_WIDE;
         NUM_BLOCK_HIGH = screenSize.y / blockSize;
 
-
+        gestureDetector = new GestureDetector(getContext(),getGestureListener());
         backgroundImage = BitmapFactory.decodeResource(context.getResources(),
                 R.drawable.background);
         backgroundImage = Bitmap.createScaledBitmap(backgroundImage , screenSize.x ,screenSize.x , false);
@@ -51,6 +60,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
         apple = new Apple(context ,NUM_BLOCK_WIDE , NUM_BLOCK_HIGH ,blockSize);
         snake = new Snake(context ,new Point(NUM_BLOCK_WIDE, NUM_BLOCK_HIGH),blockSize);
 
+
         startNewGame();
 
     }
@@ -58,7 +68,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
     public void run() {
         while(isThreadRunning)
         {
-            Log.i("TAG","thread is runnig.");
+
             if(updateRequired())
             {
                 if(!paused)
@@ -77,15 +87,18 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
     private void update()
     {
         snake.moveSnake();
+
         if(snake.isDead()) paused = true;
 
-        // Snake eat apple?
-        // draw snake and apple.
+        if(snake.haveSnakeEatenApple(apple.getPositionOfApple()))
+        {
+            apple.setApplePosition();
+        }
     }
     private boolean updateRequired() {
         if(System.currentTimeMillis() > nextFrameTime)
         {
-            nextFrameTime += 1000;
+            nextFrameTime += 120;
             return true;
         }
         return false;
@@ -96,7 +109,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
         score =0;
         apple.setApplePosition();
         snake.moveSnake();
-        //initialized snake and apple position.
+
         nextFrameTime = System.currentTimeMillis();
 
     }
@@ -122,27 +135,72 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
                 paint.setColor(Color.BLACK);
                 canvas.drawText("Tap to play" , 250 , 700, paint);
             }
-
             surfaceHolder.unlockCanvasAndPost(canvas);
-
         }
-
-
     }
     @Override
     public boolean onTouchEvent(MotionEvent motionEvent)
     {
-        switch (motionEvent.getAction() & MotionEvent.ACTION_MASK)
-        {
-            case MotionEvent.ACTION_UP:
-                if(paused)
-                {
+        gestureDetector.onTouchEvent(motionEvent);
+        return true;
+    }
+    GestureDetector.OnGestureListener getGestureListener()
+    {
+        return new GestureDetector.OnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent motionEvent) {
+                return false;
+            }
+
+            @Override
+            public void onShowPress(MotionEvent motionEvent) {}
+
+            @Override
+            public boolean onSingleTapUp(MotionEvent motionEvent) {
+                if (paused) {
                     paused = false;
                     snake.reset();
-                    return true;
                 }
-        }
-        return true;
+                return true;
+            }
+
+            @Override
+            public boolean onScroll(MotionEvent motionEvent, MotionEvent motionEvent1, float v, float v1) {
+                return false;
+            }
+
+            @Override
+            public void onLongPress(MotionEvent motionEvent) {}
+
+            @Override
+            public boolean onFling(MotionEvent downEvent, MotionEvent upEvent, float v, float v1) {
+                x1 = downEvent.getX();
+                y1 = downEvent.getY();
+                x2 = upEvent.getX();
+                y2 = upEvent.getY();
+                abs_x = Math.abs(x1 - x2);
+                abs_y = Math.abs(y1 - y2);
+                if(abs_y > MIN_DISTANCE || abs_x > MIN_DISTANCE)
+                {
+                    if(abs_y > abs_x)
+                    {
+                        //Vertical Swipe.
+                        if(y1 > y2)
+                            snake.setMovingDirection(Heading.UP);
+                        else
+                            snake.setMovingDirection(Heading.DOWN);
+                    }else if(abs_x > MIN_DISTANCE)
+                    {
+                        //Horizontal Swipe.
+                        if(x1 > x2 )
+                            snake.setMovingDirection(Heading.LEFT);
+                        else
+                            snake.setMovingDirection(Heading.RIGHT);
+                    }
+                }
+                return true;
+            }
+        };
     }
 
     void onResume()

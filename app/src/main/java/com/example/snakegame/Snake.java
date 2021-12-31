@@ -7,14 +7,17 @@ import android.graphics.Canvas;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Point;
-import android.util.Log;
-
 import java.util.ArrayList;
 
+enum Heading
+{
+    UP,DOWN,RIGHT,LEFT
+}
 public class Snake {
     private  int BlOCK_SIZE;
     private final ArrayList<Point> snakeSegments = new ArrayList<>();
     private Bitmap headRightBitmap;
+    private Heading heading;
     private Bitmap headLeftBitmap;
     private Bitmap headUpBitmap;
     private Bitmap headDownBitmap;
@@ -42,18 +45,17 @@ public class Snake {
         snakeBodyBitmap = BitmapFactory.decodeResource(context.getResources() , R.drawable.body);
         snakeBodyBitmap = Bitmap.createScaledBitmap(snakeBodyBitmap ,BlOCK_SIZE,BlOCK_SIZE,true);
 
+        heading = Heading.LEFT;
 
         snakeSegments.add(new Point(200,200));
     }
-    boolean haveSnakeEatenApple(Apple apple)
+    boolean haveSnakeEatenApple(Point applePosition)
     {
-        //Need to modify take apple block.
-        if(apple.getPositionOfApple().x  == snakeSegments.get(0).x * BlOCK_SIZE &&
-        apple.getPositionOfApple().y  == snakeSegments.get(0).y * BlOCK_SIZE)
+        if(applePosition.x  == snakeSegments.get(0).x * BlOCK_SIZE &&
+                applePosition.y  == snakeSegments.get(0).y * BlOCK_SIZE)
         {
             snakeSegments.add(new Point(-100,-100));
             return true;
-
         }
         return false;
     }
@@ -64,7 +66,21 @@ public class Snake {
             snakeSegments.get(i).x = snakeSegments.get(i-1).x;
             snakeSegments.get(i).y = snakeSegments.get(i-1).y;
         }
-        snakeSegments.get(0).x += 1;
+        switch (heading)
+        {
+            case RIGHT:
+                snakeSegments.get(0).x += 1;
+                break;
+            case UP:
+                snakeSegments.get(0).y -= 1;
+                break;
+            case DOWN:
+                snakeSegments.get(0).y += 1;
+                break;
+            case LEFT:
+                snakeSegments.get(0).x -= 1;
+                break;
+        }
     }
     void drawSnake(Canvas canvas , Paint paint)
     {
@@ -72,7 +88,22 @@ public class Snake {
         {
             canvas.drawBitmap(snakeBodyBitmap,snakeSegments.get(i).x*BlOCK_SIZE, snakeSegments.get(i).y*BlOCK_SIZE ,paint);
         }
-        canvas.drawBitmap(headRightBitmap,snakeSegments.get(0).x*BlOCK_SIZE, snakeSegments.get(0).y*BlOCK_SIZE ,paint);
+
+        switch (heading)
+        {
+            case RIGHT:
+                canvas.drawBitmap(headRightBitmap,snakeSegments.get(0).x*BlOCK_SIZE, snakeSegments.get(0).y*BlOCK_SIZE ,paint);
+                break;
+            case UP:
+                canvas.drawBitmap(headUpBitmap,snakeSegments.get(0).x*BlOCK_SIZE, snakeSegments.get(0).y*BlOCK_SIZE ,paint);
+                break;
+            case DOWN:
+                canvas.drawBitmap(headDownBitmap,snakeSegments.get(0).x*BlOCK_SIZE, snakeSegments.get(0).y*BlOCK_SIZE ,paint);
+                break;
+            case LEFT:
+                canvas.drawBitmap(headLeftBitmap,snakeSegments.get(0).x*BlOCK_SIZE, snakeSegments.get(0).y*BlOCK_SIZE ,paint);
+                break;
+        }
     }
     Boolean isDead()
     {
@@ -82,12 +113,25 @@ public class Snake {
         {
             return true;
         }
+        for(int i = snakeSegments.size()-1;i>0;i--)
+        {
+            if(snakeSegments.get(i).x == snakeSegments.get(0).x &&
+            snakeSegments.get(i).y == snakeSegments.get(0).y)
+            {
+                return true;
+            }
+        }
         return false;
     }
     void reset()
     {
         snakeSegments.clear();
         snakeSegments.add(new Point(20 ,movingRange.y/2));
+        heading = Heading.RIGHT;
     }
 
+    void setMovingDirection(Heading h)
+    {
+        heading = h;
+    }
 }
