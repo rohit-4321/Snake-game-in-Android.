@@ -1,22 +1,34 @@
 package com.example.snakegame;
 
 import android.content.Context;
+import android.content.res.AssetFileDescriptor;
+import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Point;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.SoundPool;
+import android.os.Build;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
+import java.io.IOException;
+
 public class SnakeGameLoop extends SurfaceView implements Runnable{
 
 
     private int score;
+    private SoundPool SP;
+    private int eatId;
+    private int deadId;
 
 
     private final int NUM_BLOCK_WIDE = 40;
@@ -60,7 +72,34 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
         apple = new Apple(context ,NUM_BLOCK_WIDE , NUM_BLOCK_HIGH ,blockSize);
         snake = new Snake(context ,new Point(NUM_BLOCK_WIDE, NUM_BLOCK_HIGH),blockSize);
 
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP)
+        {
+            AudioAttributes audioAttributes =
+                    new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes
+                    .CONTENT_TYPE_SONIFICATION)
+                    .build();
 
+            SP = new SoundPool.Builder()
+                    .setMaxStreams(4)
+                    .setAudioAttributes(audioAttributes)
+                    .build();
+        }else
+        {
+            SP = new SoundPool(5, AudioManager.STREAM_MUSIC,0);
+        }
+
+        try {
+            AssetManager assetManager = context.getAssets();
+            AssetFileDescriptor descriptor = assetManager.openFd("eat.ogg");
+            eatId = SP.load(descriptor,0);
+            descriptor = assetManager.openFd("dead.ogg");
+            deadId = SP.load(descriptor,0);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         startNewGame();
 
     }
@@ -88,11 +127,16 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
     {
         snake.moveSnake();
 
-        if(snake.isDead()) paused = true;
+        if(snake.isDead()) {
+            SP.play(deadId,1,1,0,0,1);
+            paused = true;
+        }
 
         if(snake.haveSnakeEatenApple(apple.getPositionOfApple()))
         {
+            SP.play(eatId ,1,1,0,0,1);
             apple.setApplePosition();
+            score++;
         }
     }
     private boolean updateRequired() {
@@ -159,6 +203,7 @@ public class SnakeGameLoop extends SurfaceView implements Runnable{
             public boolean onSingleTapUp(MotionEvent motionEvent) {
                 if (paused) {
                     paused = false;
+                    score=0;
                     snake.reset();
                 }
                 return true;
